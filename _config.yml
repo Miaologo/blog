@@ -6,7 +6,7 @@
 title: 45°仰望星空
 subtitle: 你还在等待什么？少年自己动手，丰衣足食
 description: 你还在等待什么？少年自己动手，丰衣足食
-author: christian_smile
+author: tim_smile  #christian_smile
 language: zh-CN
 timezone:
 
@@ -63,7 +63,7 @@ pagination_dir: page
 # Extensions
 ## Plugins: https://hexo.io/plugins/
 ## Themes: https://hexo.io/themes/
-theme: clean-blog
+theme: next
 
 # Header
 menu:
