@@ -1,3 +1,8 @@
+---
+title: Mac设置zsh为默认shell
+date: 2019-06-05 18:06:53
+tags:
+---
 ### 前奏
 
 当你开始使用macOS Catalina测试版时，Mac就直接使用zsh作为默认的登录shell和日常交互的shell。但是，如果是你使用的是早起的macOS版本，也可以设置zsh作为默认shell。
@@ -32,4 +37,3 @@ zsh is highly compatible with the Bourne shell (sh) and mostly compatible with b
 
 
 [Apple文档](https://support.apple.com/en-ca/HT208050)
-
