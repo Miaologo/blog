@@ -5,14 +5,14 @@
 # Site
 title: 45°仰望星空
 subtitle: 你还在等待什么，少年？自己动手，丰衣足食
-description: 你还在等待什么，少年？自己动手，丰衣足食
-author: tim_smile  #christian_smile
+description: 日常工作中的一些知识点记录和备份，用于后期查看
+author: christian_smile
 language: zh-CN
 timezone:
 
 # URL
 ## If your site is put in a subdirectory, set url as 'http://yoursite.com/child' and root as '/child/'
-url: http://yoursite.com
+url: https://christian-smile.github.io
 root: /
 permalink: :year/:month/:day/:title/
 permalink_defaults:
