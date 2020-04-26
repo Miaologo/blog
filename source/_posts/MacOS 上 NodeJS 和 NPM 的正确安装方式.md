@@ -1,10 +1,12 @@
-#以如下格式输入相应的字段
+
 ---
 title: MacOS 上 NodeJS 和 NPM 的正确安装方式
 date: 2020-04-18 22:04:53
 tags:
+
 ---
-#####正文内容
+
+
 
 # MacOS 上 NodeJS 和 NPM 的正确安装方式
 
