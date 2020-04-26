@@ -1,9 +1,7 @@
-
 ---
 title: MacOS 上 NodeJS 和 NPM 的正确安装方式
-date: 2020-04-18 22:04:53
+date: 2020-04-18 18:05:10
 tags:
-
 ---
 
 
