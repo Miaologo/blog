@@ -10,3 +10,8 @@ tags:
 
 ## __attribute__ 的使用
 [__attribute__ used section iOS简单应用](https://www.jianshu.com/p/33663906f7a2)
+
+## Attribute Syntax
+
+[GCC Attribute Syntax](https://gcc.gnu.org/onlinedocs/gcc/Attribute-Syntax.html#Attribute-Syntax)
+[ARM attribute](http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0491c/BABCJJID.html)
