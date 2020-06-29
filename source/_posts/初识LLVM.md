@@ -300,7 +300,6 @@ $ clang -fmodules -fsyntax-only -Xclang -ast-dump main.m
 ...
 
 
-
 |-ImportDecl 0x7f9f151fa818 <main.m:34:1> col:1 implicit Foundation
 
 |-ObjCInterfaceDecl 0x7f9f151fc1e0 <line:36:1, line:38:2> line:36:12 World
@@ -395,3 +394,14 @@ void test(int a, int b){
 ```
 
 执行命令 `clang -S -fobjc-arc -emit-llvm main.m -o main.ll`
+
+## 参考文章
+
+[基于LLVM开发Clang插件进行代码风格检查](https://juejin.im/post/5ce2cf306fb9a07ed440d3cc)
+
+[初学 LLVM](https://xiaozhuanlan.com/topic/8473951260)
+
+[深入剖析 iOS 编译 Clang / LLVM](https://ming1016.github.io/2017/03/01/deeply-analyse-llvm/)
+
+[編譯器小白筆記 - LLVM前端Clang](https://juejin.im/post/5bc9a6226fb9a05d325185c4)
+

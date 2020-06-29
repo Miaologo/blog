@@ -10,9 +10,11 @@ tags:
 
 ## 基础篇
 
-
+[iOS汇编基础](https://christian-smile.github.io/2020/05/18/iOS汇编基础/)
 
 ## 应用篇
 
+[iOS二进制重排](https://christian-smile.github.io/2020/05/11/iOS二进制重排/)
 
+[关于Hook的一些汇总](https://christian-smile.github.io/2020/05/14/关于Hook的一些汇总/)
 

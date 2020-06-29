@@ -30,3 +30,7 @@ categories:
 
 [我是如何让微博绿洲的启动速度提升30%的](https://mp.weixin.qq.com/s?__biz=MzA5NzMwODI0MA==&mid=2647766465&idx=1&sn=e9598765d3314a0d17dc98069344b6a2&scene=21#wechat_redirect)
 
+[基于 Mach-O 符号重排减少缺页中断次数来提升 iOS App 启动速度的可行性分析](https://juejin.im/post/5d5a05255188251f4705fb8b)
+
+[一行代码解决！iOS 二进制重排启动优化](https://www.infoq.cn/article/P9gE3zuDHLRrRfW4hvRP)
+

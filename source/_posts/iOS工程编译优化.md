@@ -223,7 +223,7 @@ LLVM 将 LLVM IR 生成当前平台的汇编代码，期间 LLVM 根据编译设
 
 Clang/LLVM 编译器是开源的，我们可以从官网下载其源码，根据上述编译过程，在每个编译阶段埋点输出耗时，生成定制化的编译器。在自己准备动手的前一周，国外大神 **Aras Pranckevičius** 已经在 LLVM 项目提交了 rL357340 修改：clang 增加 `-ftime-trace` 选项，编译时生成 Chrome（chrome://tracing） JSON 格式的耗时报告，列出所有阶段的耗时。效果如下：
 
-![img](https://mmbiz.qpic.cn/mmbiz_png/csvJ6rH9Mcu5afAVl9zMr84UF3cJC3AAYfr1CX93r5US7BicH7evib8bQYdCEpq3cw0BWCXlRwKGiaJop0fXpV8GQ/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+![img](https://mmbiz.qpic.cn/mmbiz_png/csvJ6rH9Mcu5afAVl9zMr84UF3cJC3AAYfr1CX93r5US7BicH7evib8bQYdCEpq3cw0BWCXlRwKGiaJop0fXpV8GQ/640)
 
 - 整体编译（ExecuteCompiler）耗时 8,423.8ms
 - 其中前端（Frontend）耗时 5,307.9ms，后端（Backend）耗时 3,009.6ms
@@ -233,13 +233,13 @@ Clang/LLVM 编译器是开源的，我们可以从官网下载其源码，根据
 
 这就是我想要的耗时报告！接下来修改工程 `CC={YOUR PATH}/clang`，让 Xcode 编译时使用自己的编译器；同时编译选项 `OTHER_CFLAGS` 后面增加 `-ftime-trace`，每个源文件编译后输出耗时报告。最终把所有报告汇聚起来，形成整体的编译耗时：
 
-![img](https://mmbiz.qpic.cn/mmbiz_png/csvJ6rH9Mcu5afAVl9zMr84UF3cJC3AAefbhZU3jeoYQIBq2J2dLy6L0o7xVJ1VRGb71M5QblEC9GuUwH6m9AA/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+![img](https://mmbiz.qpic.cn/mmbiz_png/csvJ6rH9Mcu5afAVl9zMr84UF3cJC3AAefbhZU3jeoYQIBq2J2dLy6L0o7xVJ1VRGb71M5QblEC9GuUwH6m9AA/640)
 
 由整体耗时可以看出，编译器前端处理（Frontend）耗时 7,659.2s，占整体 87%；而前端处理下头文件处理（Source）耗时 7,146.2s，占整体 71.9%！猜测头文件嵌套严重，每个源文件都要引入几十个甚至几百个头文件，每个头文件源码要做预处理、词法分析、语法分析等等。实际上源文件不需要使用某些头文件里的定义（如 class、function），所以编译时间才那么长。
 
 于是又写了个工具，统计所有头文件被引用次数、总处理时间、头文件分组（指一个耗时顶部的头文件所引用到的所有子头文件的集合），列出一份表格（截取 Top10）：
 
-![img](https://mmbiz.qpic.cn/mmbiz_png/csvJ6rH9Mcu5afAVl9zMr84UF3cJC3AAOFIyUiaicvCiaNX0GEzicXTVMMbMXdhC6ZnibibOGulYySPpwsNicrdmgiasMA/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+![img](https://mmbiz.qpic.cn/mmbiz_png/csvJ6rH9Mcu5afAVl9zMr84UF3cJC3AAOFIyUiaicvCiaNX0GEzicXTVMMbMXdhC6ZnibibOGulYySPpwsNicrdmgiasMA/640)
 
 Header1 处理时间 1187.7s，被引用 2,304 次；Header2 处理时间 1,124.9s，被引用 3,831 次；后面 Header3～10 都是被 Header1 引用。所以可以尝试优化 TopN 头文件里的头文件引用，尽量不包含其他头文件。
 

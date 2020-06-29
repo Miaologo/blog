@@ -83,213 +83,6 @@ Aspects 中，Hook 之前，是要对能否hook 进行检查了，对于类，�
 ## 汇编基础
 
 
-### ARM64 伪指令
-
-#### .text
-
-`.text` 用于声明以下是代码段。
-
-#### .align
-
-`.align` 用于将指令对齐到内存地址，对齐位置为参数的 2 的幂次方。 以 `.align 10` 举例，在没有添加对齐时：
-
-```text
-func_1:
-ret
-func_2:
-ret
-```
-
-得到的结果，两个指令构成了连续的地址： ![img](https://blog.dianqk.org/assets/img/trampolinehook-study-notes-1.90fdbc4b.png)
-
-在 `func_1` 和 `func_2` 之间加入 `.align 10`：
-
-```text
-func_1:
-ret
-.align 10
-func_2:
-ret
-```
-
-得到如下结果，如果 `.align` 只是个普通的指令，那 `func_2` 的 `ret` 对应地址应当为 `0x0000000100008060`，这里却变成了 `0x000000010000840`，`0x000000010000840`刚好是 2^10 的倍数。 ![img](https://blog.dianqk.org/assets/img/trampolinehook-study-notes-2.d1447eed.png)
-
-在本文中，会有一个妙用点，我们在 `func_1` 也加入 `.align 10`： ![img](https://blog.dianqk.org/assets/img/trampolinehook-study-notes-3.77e22018.png) 可以看到 `0x8800 - 0x8400 = 0x400`，0x400 刚好是 2^10，这说明我只要知道 `func_2` 的 `ret` 指令内存地址，就可以得到 `func_1` 的 `ret` 指令地址。
-
-#### [#](https://blog.dianqk.org/2020/05/11/trampolinehook-study-notes/#rept-和-endr).rept 和 .endr
-
-`.rept` 和 `.endr` 是一组循环伪指令。
-
-```text
-func_1:
-.rept 5
-add x0, x0, x1
-.endr
-ret
-```
-
-上述指令得到内容如下： ![img](https://blog.dianqk.org/assets/img/trampolinehook-study-notes-4.8d465430.png) 生成了 5 个连续的 `add` 指令。
-
-#### 标签
-
-如下代码：
-
-```text
-_my_label:
-add x0, x0, x1
-```
-
-`_my_label` 会指向 `add x0, x0, x1` 的地址，用于辅助标记命令地址。
-
-#### .globl
-
-`.globl` 可以让一个标签对链接器可见，可以供其他链接对象模块使用。 换句话说 `.global _my_func` 可以在代码中调用到 `my_func`。
-
-### ARM64 指令
-
-#### nop
-
-什么也不做的指令，愣一下。没什么用途，但可以偏移指令地址。 ![img](https://blog.dianqk.org/assets/img/trampolinehook-study-notes-5.4799e6e3.png) 可以看到 nop 也占了 4 个字节，原本 `0000000100013fe` 对应的指令应当是 ret。
-
-#### sub
-
-减法指令，可以拿来做一些地址偏移计算，用法如下：
-
-```text
-sub x1, x1, #0x8 ;相当于 x1 = x1 - 0x8
-sub x2, x1, x2 ;相当于 x2 = x1 - x2 
-```
-
-#### mov
-
-赋值指令，用法如下：
-
-```text
-mov x1, x0 ;相当于 x1 = x0
-```
-
-#### str 和 stp
-
-两个入栈指令，stp 可以同时操作两个寄存器。
-
-这里涉会及到一些寻址的格式，有 3 种方式：
-
-```text
-[x10, #0x10] ;从 x10 + 0x10 的地址取值
-[sp, #-16]! ;从 sp - 16 地址取值，取值完后在把 sp 向低地址移 -16 字节，即开辟一段新栈空间
-[sp], #16 ;从 sp 地址取值，取值完后在把 sp 向高地址偏移 -16 字节，即释放一些栈空间
-```
-
-结合上面几种寻址方式，搭配入栈指令，用法如下：
-
-```text
-str x8, [sp, #-16]! ;将 x8 存到 sp - 16 的位置，并将 sp -= 16
-stp x4, x5, [sp, #-16]! ;将 x4 x5 的值存到 sp - 16 的位置，并将 sp -= 16
-```
-
-#### ldr 和 ldp
-
-两个出栈指令，ldp 可以同时操作两个寄存器，用法如下：
-
-```text
-ldr x8, [sp], #16 ;将 sp 位置的值取出来，存入 x8 中，并将 sp += 16
-ldp x4, x5, [sp], #16 ;将 sp 位置的值取出来，存入 x4 x5 中，并将 sp += 16
-```
-
-#### br
-
-跳转指令，直接跳转到指定地址，跳转完不返回。有些类似在一个函数末尾调用了另外的函数。用法如下：
-
-```text
-br x10 ;跳转到 x10 中保存的地址
-```
-
-#### bl
-
-跳转指令，将 bl 的下一个指令地址保存到 lr 寄存器，然后跳转到指定地址，因为将下一个指令保存到 lr 了，所以跳转完会回来执行下一个指令。用法如下：
-
-```text
-mov x0, x1
-bl 0x100221232 ;跳转到 0x100221232，执行完毕回来执行下一条指令
-sub x0, x0, 0x10
-```
-
-#### blr
-
-跳转指令，和 bl 类似，但可以使用动态地址，可以跳转到寄存器的值保存的地址，用法如下：
-
-```text
-mov x8, 0x100221232
-blr x8
-```
-
-#### ret
-
-返回指令，子程序（函数调用）返回指令，返回到寄存器 lr 保存的地址。
-
-### 函数、汇编、寄存器
-
-汇编指令是对寄存器和栈进行各种操作，如何对应到我们日常编写的函数是关键。 寄存器相当于全局变量，在汇编中没有传入参数这样的形式，但我们可以用寄存器进行传递参数。为此，我们进行了一系列约定：
-
-- x0 - x7：用于传递子程序参数和结果，使用时不需要保存，多余参数采用堆栈传递，子程序返回结果写入到 x0
-- x8：用于保存子程序返回地址
-- x9 - x15：临时寄存器
-- x16 - x17：子程序内部调用寄存器
-- x18：平台寄存器，它的使用与平台相关
-- x19 - x28：临时寄存器
-- x29：帧指针寄存器 fp（栈底指针），用于连接栈帧
-- x30：链接寄存器 lr，保存了子程序返回的地址
-- x31：堆栈指针寄存器 sp
-
-连续调用多个子程序会面临寄存器不够用的问题，大家都要用 lr 作为返回地址，都要用 x0 传递参数。 栈来了！如果后面的操作会对寄存器有修改，先入栈保存起来，等执行完相关操作，在出栈读出来就好了。 比如 lr 是必须入栈的寄存器（当然你脾气硬，不怕其他寄存器被修改，保存到其他寄存器也可以，但一定别这样写，万一啥时候被修改了呢），如果没有保存 lr，调用子程序后，lr 不是当初的 lr 了，会找不到返回的位置。
-
-如下汇编没有保存 lr：
-
-```text
-add_func:
-add x0, x0, x1
-ret
-
-.globl _my_add_func
-_my_add_func: ;没有保存 lr，调用后回不去了
-bl add_func
-ret
-```
-
-调用后：
-
-```text
-FOUNDATION_EXTERN int my_add_func(int x, int y);
-
-printf("开始执行 my_add_func\n");
-int result = my_add_func(1, 1);
-printf("执行 my_add_func 结果: %d\n", result);
-```
-
-得到的输出：
-
-```text
-开始执行 my_add_func
-```
-
-为 `_my_add_func` 增加个 lr 入栈就行了：
-
-```text
-_my_add_func:
-str lr, [sp, #-16]!
-bl add_func
-ldr lr, [sp], #16
-ret
-```
-
-此时得到的输出为：
-
-```text
-开始执行 my_add_func
-执行 my_add_func 结果: 2
-```
-
-更复杂的调用场景，需要将更多的寄存器入栈，避免寄存器内容被污染。
 
 ## Hook框架
 
@@ -325,8 +118,31 @@ Start: [jmpews/HookZz](https://github.com/jmpews/HookZz/blob/master/docs/hookzz-
 * [HOOKZZ框架](http://jmpews.github.io/2017/08/01/pwn/HookZz框架/)
 * [Dobby](https://github.com/jmpews/Dobby)
 * [iOS源码解析: 聊一聊iOS中的hook方案](https://juejin.im/post/5e3ec8f2518825493f6cd5fa)
+* [Hook objc_msgSend -- 从 0.5 到 1](https://blog.gocy.tech/2019/07/08/hook-msgSend-advance/)
 
 
+
+# APM
+
+* 美图的开源性能工具 [MTHawkeye](https://github.com/meitu/MTHawkeye)
+
+[蘑菇街移动端全链路跟踪保障体系](https://link.jianshu.com?t=http%3A%2F%2Fwww.infoq.com%2Fcn%2Fpresentations%2Fmobile-terminal-full-link-tracking-and-security-system)
+
+[美团外卖移动端性能监测体系实现](https://link.jianshu.com?t=http%3A%2F%2Fmp.weixin.qq.com%2Fs%2FMwgjpHj_5RaG74Z0JjNv5g)
+
+[微信读书 iOS 质量保证及性能监控](https://link.jianshu.com?t=https%3A%2F%2Fwereadteam.github.io%2F2016%2F12%2F12%2FMonitor%2F)
+
+[网易NeteaseAPM iOS SDK技术实现分享](https://link.jianshu.com?t=http%3A%2F%2Fwww.infoq.com%2Fcn%2Farticles%2Fnetease-ios-sdk-neteaseapm-technology-share)
+
+[阿里百川码力APP监控来了 重量级选手进入APM市场](https://link.jianshu.com?t=http%3A%2F%2Fwww.imooc.com%2Farticle%2F14205%3Fblock_id%3Dtuijian_wz)
+
+[APM最佳实践系列文章专题合辑](https://link.jianshu.com?t=https%3A%2F%2Fgithub.com%2Fjoy0304%2FJoy-Blog%2Fblob%2Fmaster%2FiOS%20Collection.md)
+
+[手机淘宝：亿级用户APP的快速运维交付实践](https://link.jianshu.com?t=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzAxNDEwNjk5OQ%3D%3D%26mid%3D2650400312%26idx%3D1%26sn%3Dce8468991c70ab2e06634f59cd2b6865%26chksm%3D83952e20b4e2a736f701853a483da535312a258a56ca87d65b8ef77e8cf012dab9145659a0aa%26scene%3D0%26key%3D459eeebe1b51063320bc30b7024529048032de1a4d3a8e7cf01dbfc995da8f74fe85688c8be0471b1fdcb82d9b875d163a62f42e9ca04946e2c899194097fb93632ca7790f6fb7395d897442b9272213%26ascene%3D0%26uin%3DMTY3NzkzNjI0NA%3D%3D%26devicetype%3DiMac%2BMacBookPro12%2C1%2BOSX%2BOSX%2B10.12.2%2Bbuild(16C67)%26version%3D12020010%26nettype%3DWIFI%26fontScale%3D100%26pass_ticket%3DJE5tAT8H%2BfKdFzHQq72mWMIv%2BitHWOqOma3xmX5OeGGPWz2mPXxz3kaQE1WSKJlw)
+
+[移动端监控体系之技术原理剖析](https://www.jianshu.com/p/8123fc17fe0e)
+
+* https://github.com/Tencent/matrix
 
 
 

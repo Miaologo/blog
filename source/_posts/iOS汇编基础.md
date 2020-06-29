@@ -12,74 +12,7 @@ tags:
 
 ### 寄存器
 
-如果你还不知道什么是寄存器，建议先Google一下。 这里不再详细说明，寄存器是CPU中的高速存储单元，要比内存中存取要快的多。
-
-这里说明一下arm64有哪些寄存器：
-
-#### **R0 – R30**
-
-`r0 - r30` 是31个通用整形寄存器。每个寄存器可以存取一个64位大小的数。 当使用 `x0 - x30`访问时，它就是一个64位的数。当使用 `w0 - w30`访问时，访问的是这些寄存器的低32位，如图：
-
-![1.png](https://blog.cnbluebox.com/images/arm64-start/1.png)
-
-其实通用寄存器有32个，第32个寄存器x31，在指令编码中，使用来做 `zero register`, 即`ZR`, `XZR/WZR`分别代表64/32位，`zero register`的作用就是0，写进去代表丢弃结果，拿出来是0.
-
-其中 `r29` 又被叫做 `fp` (frame pointer). `r30` 又被叫做 `lr` (link register)。其用途会在下一节《栈》中讲到。
-
-#### **SP**
-
-SP寄存器其实就是 x31，在指令编码中，使用 `SP/WSP`来进行对SP寄存器的访问。
-
-#### **PC**
-
-PC寄存器中存的是当前执行的指令的地址。在arm64中，软件是不能改写PC寄存器的。
-
-#### **V0 – V31**
-
-`V0 - V31` 是向量寄存器，也可以说是浮点型寄存器。它的特点是每个寄存器的大小是 128 位的。 分别可以用`Bn Hn Sn Dn Qn`的方式来访问不同的位数。如图：
-
-![2.png](https://blog.cnbluebox.com/images/arm64-start/2.png)
-
-`Bn Hn Sn Dn Qn`可以这样理解记忆, 基于一个word是32位，也就是4Byte大小：
-
-> Bn: 一个Byte的大小
-> Hn: half word. 就是16位
-> Sn: single word. 32位
-> Dn: double word. 64位
-> Qn: quad word. 128位
-
-#### **SPRs**
-
-SPRs是状态寄存器，用于存放程序运行中一些状态标识。不同于编程语言里面的if else.在汇编中就需要根据状态寄存器中的一些状态来控制分支的执行。状态寄存器又分为 `The Current Program Status Register (CPSR)` 和 `The Saved Program Status Registers (SPSRs)`。 一般都是使用`CPSR`， 当发生异常时， `CPSR`会存入`SPSR`。当异常恢复，再拷贝回`CPSR`。
-
-还有一些系统寄存器，还有 `FPSR` `FPCR`是浮点型运算时的状态寄存器等。基本了解上面这些寄存器就可以了。
-
-CPSR (Current Program Status Register)是程序状态寄存器，cpsr 是一个32bit 的寄存器
-![img](https://images.xiaozhuanlan.com/photo/2018/54be72f36471426505b9e412c31fd0eb.jpeg)
-
-##### N
-
-- Negative 标志位,当用两个补码表示的带符号数进行运算时，N=1 表示运算的结果为负数；N=0 表示运算的结果为正数或零.
-
-##### Z
-
-- Zero 标志位,Z=1 表示运算的结果为零；Z=0表示运算的结果为非零.如果结果为零，通常表示比较的结果相等。
-
-##### C
-
-- Carry 标志位，有以下3种情况
-  1、无符号加法运算和cmn指令，如果产生进位，则C=1，否则C=0；
-  2、无符号减法运算和cmp指令，如果产生借位，则C=0，否则C=1；
-  3、进行移位操作的时候，C中保存最后一位移出的值。
-  说明：当一条指令中同时含有算术运算指令和移位指令时，影响C的值是算术运算而不是移位操
-
-##### V
-
-- 溢出标志位。进行有符号运算时如果发生错误，则V=1，否则V=0。
-
-一些指令如cmn、cmp等会无条件的刷新cpsr中的条件标志位，其他指令必须要在指令后面加上S后缀才会改变CPSR中的条件标志位。比如 `add x0, x0, #0x1` 写成 `adds x0, x0, #0x1`
-
-你可以在[ARM文档](http://infocenter.arm.com/help/topic/com.arm.doc.ihi0042f/IHI0042F_aapcs.pdf)里了解更多关于ARM调用约定的信息
+可以在[ARM文档](http://infocenter.arm.com/help/topic/com.arm.doc.ihi0042f/IHI0042F_aapcs.pdf)里了解更多关于ARM调用约定的信息
 
 想知道更多关于指令的信息，可以看看[这个文档](http://infocenter.arm.com/help/topic/com.arm.doc.qrc0001l/QRC0001_UAL.pdf)，或者[看其他的中文](http://read.pudn.com/downloads151/sourcecode/embed/654540/Cortex_M3_Guide/chpt04-05.pdf)
 
@@ -642,6 +575,28 @@ ret
 
 因此我们只要在 flag 置位前放置内存屏障，即可保证运算结果全部写入内存后才置位 flag，进而也就保证了逻辑的正确性。
 
+voldatile关键字首先具有“易变性”，声明为volatile变量编译器会强制要求读内存，相关语句不会直接使用上一条语句对应的的寄存器内容，而是重新从内存中读取。
+
+其次具有”不可优化”性，volatile告诉编译器，不要对这个变量进行各种激进的优化，甚至将变量直接消除，保证代码中的指令一定会被执行。
+
+最后具有“顺序性”，能够保证Volatile变量间的顺序性，编译器不会进行乱序优化。不过要注意与非volatile变量之间的操作，还是可能被编译器重排序的。
+
+需要注意的是其含义跟原子操作无关，比如：volatile int a; a++; 其中a++操作实际对应三条汇编指令实现”读-改-写“操作（RMW），并非原子的。
+
+> 思考：bool类型是不是适合使用，不会出问题。
+
+不同编程语言中voldatile含义与实现并不完全相同，Java语言中voldatile变量可以被看作是一种轻量级的同步，因其还附带了acuire和release语义。实际上也是从JDK5以后才通过这个措施进行完善，其volatile 变量具有 synchronized 的可见性特性，但是不具备原子特性。Java语言中有volatile修饰的变量，赋值后多执行了一个“load addl $0x0, (%esp)”操作，这个操作相当于一个lock指令，就是增加一个完全的内存屏障指令，这点与C++实现并不一样。volatile 的读性能消耗与普通变量几乎相同，但是写操作稍慢，因为它需要在本地代码中插入许多内存屏障指令来保证处理器不发生乱序执行。
+
+Java实践中仅满足下面这些条件才应该使用volatile关键字：
+
+- 变量写入操作不依赖变量当前值，或确保只有一个线程更新变量的值（Java可以，C++仍然不能）
+- 该变量不会与其他变量一起纳入
+- 变量并未被锁保护
+
+C++中voldatile等于插入编译器级别屏障，因此并不能阻止CPU硬件级别导致的重排。C++11 中volatile语义没有任何变化，不过提供了std::atomic工具可以真正实现原子操作，而且默认加入了内存屏障（可以通过在store与load操作时设置内存模型参数进行调整，默认为std::memory_order_seq_cst）。
+
+C++实践中推荐涉及并发问题都使用std::atomic，只有涉及特殊内存操作的时候才使用volatile关键字。这些情况通常IO相关，防止相关操作被编译器优化，也是volatile关键字发明的本意。
+
 ###放置内存屏障
 
 -----
@@ -731,13 +686,61 @@ libsystem_platform.dylib`_platform_strlen:
 
 一顿操作后发现原来是 `strlen`，如果你一味地轻信 Xcode 显示的注释，分析就无法进行下去了，这告诉我们做事情一定要抱着怀疑的态度。
 
+## Stack backtrace
 
+栈回溯对代码调试和crash定位有很重大的意义，通过之前几个步骤的图解，栈回溯的原理也相对比较清楚了。
+
+- 通过当前的SP，FP可以得到当前函数的stack frame，通过PC可以得到当前执行的地址。
+- 在当前栈的FP上方，可以得到Caller(调用者)的FP，和LR。通过偏移，我们还可以获取到Caller的SP。由于LR保存了Caller下一条指令的地址，所以实际上我们也获取到了Caller的PC
+- 有了Caller的FP，SP和PC，我们就可以获取到Caller的stack frame信息，由此递归就可以不获取到所有的Stack Frame信息。
+
+栈回溯的过程中，我们拿到的是函数的地址，又是如何通过函数地址获取到函数的名称和偏移量的呢？
+
+- 对于系统的库，比如CoreFoundation我们可以直接通过系统的符号表拿到
+- 对于自己代码，则依赖于编译时候生成的dsym文件。
+
+这个过程我们称之为symbolicate，对于iOS设备上的crash log，我们可以直接通过XCode的工具symbolicatecrash来符号化：
+
+```
+cd /Applications/Xcode.app/Contents/SharedFrameworks/DVTFoundation.framework/Versions/A/Resources./symbolicatecrash ~/Desktop/1.crash ~/Desktop/1.dSYM > ~/Desktop/result.crash
+```
+
+当然，可以用工具dwarfdump去查询一个函数地址：
+
+```shell
+dwarfdump --lookup 0x000000010007528c  -arch arm64 1.dSYM
+```
 
 ## 参考文档
 
-Apple提供的[System Call Table](https://www.theiphonewiki.com/wiki/Kernel_Syscalls)
+Apple提供的
 ARM公司提供的[官方文档](http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0802a/STUR_fpsimd.html)
 [iOS调试进阶](https://zhuanlan.zhihu.com/c_142064221)
 [iOS开发同学的arm64汇编入门](https://blog.cnbluebox.com/blog/2017/07/24/arm64-start/)
+
+- iOS调试进阶 https://zhuanlan.zhihu.com/c_142064221
+- iOS应用逆向工程 https://book.douban.com/subject/25826902/
+- ios-assembly-tutorial https://www.raywenderlich.com/37181/ios-assembly-tutorial
+- iOS ABI Function Call Guide https://developer.apple.com/library/content/documentation/Xcode/Conceptual/iPhoneOSABIReference/Introduction/Introduction.html
+- Procedure Call Standard for the ARM 64-bit Architecture https://developer.apple.com/library/content/documentation/Xcode/Conceptual/iPhoneOSABIReference/Articles/ARM64FunctionCallingConventions.html#//apple_ref/doc/uid/TP40013702-SW2
+
 [volatile 与内存屏障总结](https://zhuanlan.zhihu.com/p/43526907)
+
+1. [C/C++ Volatile关键词深度剖析](https://link.zhihu.com/?target=http%3A//hedengcheng.com/%3Fp%3D725)
+2. [java的并发关键字volatile](https://link.zhihu.com/?target=https%3A//www.jianshu.com/p/ef8de88b1343)
+3. [指令重排序](https://link.zhihu.com/?target=https%3A//www.jianshu.com/p/c6f190018db1)
+4. [多处理器编程：从缓存一致性到内存模型](https://zhuanlan.zhihu.com/p/35386457)
+5. [聊聊原子变量、锁、内存屏障那点事](https://link.zhihu.com/?target=http%3A//0xffffff.org/2017/02/21/40-atomic-variable-mutex-and-memory-barrier/)
+6. [Why Memory Barriers？中文翻译（上）](https://link.zhihu.com/?target=http%3A//www.wowotech.net/kernel_synchronization/Why-Memory-Barriers.html)
+7. [LINUX内核内存屏障](https://link.zhihu.com/?target=https%3A//blog.csdn.net/carltraveler/article/details/39055321)
+8. [Memory Model: 从多处理器到高级语言](https://link.zhihu.com/?target=https%3A//github.com/GHScan/TechNotes/blob/master/2017/Memory_Model.md%23references)
+9. [高并发编程--多处理器编程中的一致性问题(上)](https://zhuanlan.zhihu.com/p/48157076)
+10. [高并发编程--多处理器编程中的一致性问题(下)](https://zhuanlan.zhihu.com/p/48161056)
+11. [如何理解C++11中的六种内存模型](https://www.zhihu.com/question/24301047)
+12. [C/C++11 mappings to processors](https://link.zhihu.com/?target=https%3A//www.cl.cam.ac.uk/~pes20/cpp/cpp0xmappings.html)
+13. [When should I use _mm_sfence _mm_lfence and _mm_mfence](https://link.zhihu.com/?target=https%3A//stackoverflow.com/questions/4537753/when-should-i-use-mm-sfence-mm-lfence-and-mm-mfence)
+14. [Why is (or isn't?) SFENCE + LFENCE equivalent to MFENCE?](https://link.zhihu.com/?target=https%3A//stackoverflow.com/questions/27627969/why-is-or-isnt-sfence-lfence-equivalent-to-mfence/50322404%2350322404)
+15. [Memory part 5: What programmers can do](https://link.zhihu.com/?target=https%3A//lwn.net/Articles/255364/)
+16. [Memory Reordering Caught in the Act](https://link.zhihu.com/?target=http%3A//preshing.com/20120515/memory-reordering-caught-in-the-act/)
+17. [C++ and the Perils of Double-Checked Locking](https://link.zhihu.com/?target=http%3A//www.aristeia.com/Papers/DDJ_Jul_Aug_2004_revised.pdf)
 
