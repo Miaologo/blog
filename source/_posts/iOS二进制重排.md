@@ -34,3 +34,6 @@ categories:
 
 [一行代码解决！iOS 二进制重排启动优化](https://www.infoq.cn/article/P9gE3zuDHLRrRfW4hvRP)
 
+[手淘架构组最新实践 | iOS基于静态库插桩的⼆进制重排启动优化](https://mp.weixin.qq.com/s/YDO0ALPQWujuLvuRWdX7dQ)
+
+[iOS基于二进制重排启动优化](https://juejin.im/post/5eeeccd6f265da02e47d900b#heading-11)

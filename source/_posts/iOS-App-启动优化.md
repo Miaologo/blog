@@ -35,3 +35,11 @@ App 启动速度怎么做优化与监控？
 
 [高德APP启动耗时剖析与优化实践（iOS篇）](https://mp.weixin.qq.com/s/ls4x-GtzaXTdkR2aG9Dbtw)
 
+
+
+[如何对 iOS 启动阶段耗时进行分析](https://ming1016.github.io/2019/12/07/how-to-analyze-startup-time-cost-in-ios/)
+
+[抖音品质建设 - iOS启动优化《原理篇》](https://mp.weixin.qq.com/s/3-Sbqe9gxdV6eI1f435BDg)
+
+[iOS 启动优化 + 监控实践](https://juejin.im/post/6844904194877587469)
+

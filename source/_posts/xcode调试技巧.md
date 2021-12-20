@@ -227,7 +227,7 @@ Setting a breakpoint at -[UIViewController viewDidAppear:] with condition (void*
 Breakpoint 1: where = UIKit`-[UIViewController viewDidAppear:], address = 0x000000010e11533c
 ```
 
-### LLDB 和 Python
+## LLDB 和 Python
 
 LLDB 有内建的，完整的 [Python](http://lldb.llvm.org/python-reference.html) 支持。在LLDB中输入 `script`，会打开一个 Python REPL。你也可以输入一行 python 语句作为 `script 命令` 的参数，这可以运行 python 语句而不进入REPL：
 
@@ -251,6 +251,40 @@ command script import ~/myCommands.py
 
 或者把这行命令放在 `/.lldbinit` 里，这样每次进入 LLDB 时都会自动运行。[Chisel](https://github.com/facebook/chisel) 其实就是一个 Python 脚本的集合，这些脚本拼接 (命令) 字符串 ，然后让 LLDB 执行。很简单，不是吗？
 
+### 利用别名和脚本添加自定义 LLDB 命令（Add custom LLDB commands using aliases and scripts）
+
+当你对 LLDB 命令越来越了解，操作越来越骚的时候，你会发现小小的控制台会限制你的发挥，这个时候你需要一个更大的舞台。
+
+现在我要展示如何使用 Python 脚本执行命令，你需要先下载一 个[nudge.py](https://developer.apple.com/sample-code/wwdc/2018/UseScriptsToAddCustomCommandsToLLDB.zip) ，这是苹果开发工程师为我们准备好的 Python 脚本，它可以帮助我们简单、快速地移动 UI 控件。我们需要将 [nudge.py](https://developer.apple.com/sample-code/wwdc/2018/UseScriptsToAddCustomCommandsToLLDB.zip) 文件放入你的用户根目录`~/nudge.py`。
+
+下一步我们需要在用户根目录下新建一个`~/.lldbinit`文件，并加入下方命令和别名：
+
+```
+command script import ~/nudge.py
+command alias poc expression -l objc -O --
+command alias 🚽 expression -l objc -- (void)[CATransaction flush]
+复制代码
+```
+
+做完这些，我们就可以来使用我们的自定义命令`nudge x-offset y-offset [view]`了，具体用法如下：
+
+```
+// 引用 nudge
+(lldb) command script import ~/nudge.py
+The "nudge" command has been installed, type "help nudge" for detailed help.
+
+// 拿到对象指针
+(lldb) po myLabel
+▿ Optional<UILabel>
+  - some : <UILabel: 0x7fc04a60fff0; frame = (57 141; 42 21); text = 'Label'; opaque = NO; autoresize = RM+BM; userInteractionEnabled = NO; layer = <_UILabelLayer: 0x600001d36c10>>
+  
+// Y轴向上偏移5
+(lldb) nudge 0 -5 0x7fc04a60fff0
+```
+
+
+
+
 ## 参考文章
 
 [Xcode-LLVM-调试技巧](https://zhuanlan.zhihu.com/p/63629659)
@@ -258,3 +292,5 @@ command script import ~/myCommands.py
 [**与调试器共舞 - LLDB 的华尔兹**](https://objccn.io/issue-19-2/)
 
 https://github.com/facebook/chisel
+
+[WWDC 2018：效率提升爆表的 Xcode 和 LLDB 调试技巧](https://juejin.im/post/6844903620329078791#heading-13)

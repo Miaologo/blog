@@ -36,11 +36,29 @@ tags:
 
 ## @synchronized(obj)
 
-`@synchronized(id obj){}`锁的是对象`obj`，使用该锁的时候，底层是对象计算出来的值作为`key`，生成一把锁，不同的资源的读写可以使用不同`obj`作为锁对象。
+`@synchronized(id obj){}` 是一种互斥锁， 锁的是对象`obj`，使用该锁的时候，底层是对象计算出来的值作为`key`，生成一把锁，不同的资源的读写可以使用不同`obj`作为锁对象。
+
+一般用于单例，但是在Swift中没有@synchronized，Swift中与之对应的是objc_sync_enter和objc_sync_exit，用法如下：
+
+```
+OC代码：
+@synchronized (self) {
+    //todo someting
+}
+
+Swift代码：
+objc_sync_enter(self)
+//todo someting
+objc_sync_exit(self)
+```
 
 
 
 ## NSLock
+
+`NSLooK`  是一种互斥锁，可以保证同一个资源，在同一时间内只有一个线程进行操作和访问。
+
+`NSLock` 实现了 `NSLocking` 协议，`NSLocking` 协议中有两个方法`lock()` 和 `unlock()`，即上锁和解锁，实现了 `NSLocking` 协议的类都具有互斥锁的特性，`NSLocking` 协议如下：
 
 ```objective-c
 //协议NSLocking
@@ -61,6 +79,8 @@ tags:
 @end
 ```
 
+**NSLock还有另一个特点：lock()方法不能重复调用（即锁重入）**
+
 
 
 ## dispatch_queue
@@ -68,6 +88,35 @@ tags:
 
 
 ## dispatch_semaphore
+
+信号量是属于 `gcd` 中的内容，可根据信号量的值来阻塞线程。当信号量量 >=0 时候不会阻塞当前线程，信号量小于 0 时候会阻塞当前线程。当调用 `wait()` 方法后信号量减1，调用 `signal()` 方法后信号量加1。
+
+```swift
+var number = 0
+//信号量
+let semaphare = DispatchSemaphore(value: 1)
+DispatchQueue.global().async {
+    semaphare.wait()
+    number += 1
+    print(number)
+    semaphare.signal()
+}
+            
+DispatchQueue.global().async {
+    semaphare.wait()
+    number += 1
+    print(number)
+    semaphare.signal()
+}
+
+```
+
+> 同时启动两个线程（以上代码两个线程执行顺序随机），当第一个线程调用wait()时，信号量 减1。这时候信号量为0，所以第一个线程正常执行。而第二个线程开始执行时调用wait()，这时候信号量为减1，所以第二个线程阻塞。
+
+当第一个线程调用signal()方法后，信号量加1，第二个线程开始执行。
+
+
+
 
 **dispatch_semaphore_signal**
 
@@ -79,16 +128,43 @@ tags:
 
 这个函数传入的并发队列必须是通过`dispatch_queue_create`创建，如果传入的是一个串行的或者全局并发队列，这个函数便等同于`dispatch_async`的效果。
 
+栅栏函数也是gcd中常用的函数，它可以通过阻塞当前队列的形式，来达到锁的目的，使用如下：
 
+```swift
+let queue = DispatchQueue(label: "1111")
+                        
+queue.async {
+    print("1")
+}            
+queue.async {
+    print("2")
+}
+            
+queue.async(group: nil, qos: .default, flags: .barrier, execute: {
+    print("栅栏")
+})
+            
+queue.async {
+    print("3")
+}
+            
+queue.async {
+    print("4")
+}
+```
+
+> 解释：如果没有栅栏函数阻塞，则1、2、3、4打印顺序随机，加了栅栏函数之后，会阻塞当前队列，所以3、4只能在1、2打印完成之后再执行打印。
+
+打印顺序为1、2、栅栏、3、4，其中1和2、3和4打印顺序随机。
 
 ## NSRecursiveLock
+
+NSRecursiveLock 我们称之为递归锁，NSRecursiveLock本身也实现NSLocking协议，但不同的是它可以解决NSLock锁重入问题，既然是递归锁，它也可以进行递归调用。
 
 ```objective-c
 - (BOOL)tryLock;//尝试加锁
 - (BOOL)lockBeforeDate:(NSDate *)limit;//日期前加锁
 ```
-
-
 
 
 
@@ -124,6 +200,8 @@ tags:
 
 ## NSCondition
 
+`NSCondition` 一般称之为条件锁，它也实现了 `NSLocking` 协议，所以它也有 `lock` 和 `unlock` 两个方法，如果调用这两个方法效果与 `NSLock` 一样，除此之外它还为我们提供了另外几个方法： `wait() ` 阻塞当前线程。`signal()` 通知释放第一阻塞的线程。 `broadcast() ` 释放每个线程中的第一个阻塞。
+
 ```objective-c
 - (void)wait;//等待
 - (BOOL)waitUntilDate:(NSDate *)limit;
@@ -131,9 +209,58 @@ tags:
 - (void)broadcast;//唤醒多个线程
 ```
 
+用法如下：
+
+```objective-c
+private let condition = NSCondition()
+
+private func testCondition() {
+    DispatchQueue.global().async {
+        self.conditionFunc()
+    }
+            
+    DispatchQueue.global().async {
+        self.conditionFunc()
+    }
+            
+    DispatchQueue.global().asyncAfter(deadline: .now() + 2, execute: {
+        self.condition.signal()
+    })
+
+    DispatchQueue.global().asyncAfter(deadline: .now() + 4, execute: {
+        self.condition.signal()
+    })
+}
+        
+private func conditionFunc() {
+    condition.lock()
+    print("conditionFunc")
+    count += 1
+    print(count)
+    condition.wait()
+    count += 1
+    print(count)
+    condition.unlock()
+}
+
+// -------- console ------
+// conditionFunc
+// 1
+// conditionFunc
+// 2
+// 3
+// 4
+```
+
+> 解释：两个线程同时调用conditionFunc方法，第一个线程获得锁，先打印conditionFunc，然后打印1，第二个线程处于等待状态。
+
+接着condition调用了wait，第一个线程进入阻塞，第二个线程可以进入执行，再打印conditionFunc、2，紧接着condition又调用了wait，第二个线程进入阻塞，两秒后condition又调用一signal，第一个线程释放阻塞，count自加1，打印3，又两秒后，condition又调用了signal，第二个线程释放，count又自加1，则打印4。如果把singnal改为broadcast，则两个线程会全部释放阻塞。
+
 
 
 ## pthread_mutex
+
+pthread_mutex属于C语言函数，是一个互斥锁，同时也是一个递归锁，
 
 **pthread_mutex_init(pthread_mutex_t \* mutex,const pthread_mutexattr_t attr);**初始化锁变量mutex。attr为锁属性，NULL值为默认属性。
 
@@ -144,6 +271,28 @@ tags:
 **pthread_mutex_unlock(pthread_mutex_t*mutex);**释放锁
 
 **pthread_mutex_destroy(pthread_mutex_t**mutex);**使用完后释放
+
+用法如下：
+
+```swift
+var mutex = pthread_mutex_t()
+//初始化
+pthread_mutex_init(&mutex,nil)
+
+//递归锁，可支持递归调用
+private func testMutex() {
+    pthread_mutex_lock(&mutex)
+    count += 1
+    print(count)
+    testMutex()
+    pthread_mutex_unlock(&mutex)
+}
+        
+deinit {
+    //要注意释放
+    pthread_mutex_destroy(&mutex)
+}
+```
 
 
 
@@ -174,13 +323,15 @@ pthread_rwlock_destroy(pthread_rwlock_t * )
 
 
 
-
-
-
-
 ## OSSpinLock
 
-**OSSpinLock**自旋锁，性能最高的锁。原理很简单，就是一直 **do while**忙等。它的缺点是当等待时会消耗大量 CPU 资源，所以它不适用于较长时间的任务。 不过最近YY大神在自己的博客[不再安全的 OSSpinLock](https://link.juejin.im/?target=https%3A%2F%2Fblog.ibireme.com%2F2016%2F01%2F16%2Fspinlock_is_unsafe_in_ios%2F)中说明了**OSSpinLock**已经不再安全，请大家谨慎使用
+**OSSpinLock**自旋锁，性能最高的锁。
+
+自旋锁与互斥锁的区别在于，当线程尝试获取锁但没有获取到时，互斥锁会使线程进入休眠状态，等到锁被释放，线程会被唤醒同时获取到锁。从而继续执行任务。 而自旋锁，则不会进入休眠状态，而是一直循环看是否可用。
+
+由于自旋锁一直等待会消耗较多CPU 资源，但是它的效率较高，一旦锁释放立刻就能执行无需唤醒。所以适用于短时间内的轻量级任务锁定。 在iOS开发中，苹果为我们提供了一种自旋锁OSSpinLock，但是OSSpinLock已经于iOS10.0之后被废弃了.
+
+原理很简单，就是一直 **do while**忙等。它的缺点是当等待时会消耗大量 CPU 资源，所以它不适用于较长时间的任务。 不过最近YY大神在自己的博客[不再安全的 OSSpinLock](https://link.juejin.im/?target=https%3A%2F%2Fblog.ibireme.com%2F2016%2F01%2F16%2Fspinlock_is_unsafe_in_ios%2F)中说明了**OSSpinLock**已经不再安全，请大家谨慎使用
 
 ```objective-c
 //初始化 一般是0，或者直接数字0也是ok的。
@@ -200,6 +351,8 @@ OSSpinLockUnlock(&lock);
 
 ## os_unfair_lock
 
+`os_unfair_lock` 是iOS 10.0以后用来取代 `OSSpinLock` 的，与 `OSSpinLock` 不同的是，`os_unfair_lock` 尝试获取的线程也会进入休眠，解锁时由内核唤醒。
+
 `os_unfair_lock`被系统定义为低级锁，一般低级锁都是闲的时候在睡眠，在等待的时候被内核唤醒，目的是替换已弃用的`OSSpinLock`，而且必须使用`OS_UNFAIR_LOCK_INIT`来初始化，加锁和解锁必须在相同的线程，否则会中断进程，使用该锁需要系统在`__IOS_AVAILABLE(10.0)`，锁的数据结构是一个结构体
 
 ```objective-c
@@ -210,11 +363,23 @@ typedef struct os_unfair_lock_s {
 
 ```
 
+`os_unfair_lock` 从字面意思理解，它是一个不公平锁，即释放锁的线程可能立即再次获得锁，而之前等待锁的线程唤醒后可能无法尝试加锁。用法如下：
 
+```swift
+private var unfairLock = os_unfair_lock()
+
+func testUnfairLock() {
+    os_unfair_lock_lock(&unfairLock)
+    //todo someting
+    os_unfair_lock_unlock(&unfairLock)
+}
+```
 
 ## atomic 原子操作
 
-给属性添加`atmoic`修饰，可以保证属性的`setter`和`getter`都是原子性操作，也就保证了`setter`和`getter`的内部是线程同步的。 原子操作是最终调用了`static inline void reallySetProperty(id self, SEL _cmd, id newValue, ptrdiff_t offset, bool atomic, bool copy, bool mutableCopy) objc-accessors.mm 48行`，我们进入到函数内部
+`atmoic` 一般用于 OC 声明属性的关键词描述。代表原子性操作，本身是属于线程安全的，与之相反的是nonatomic,非原子性操作。可以保证属性的`setter`和`getter`都是原子性操作，也就保证了`setter`和`getter`的内部是线程同步的。 
+
+原子操作是最终调用了`static inline void reallySetProperty(id self, SEL _cmd, id newValue, ptrdiff_t offset, bool atomic, bool copy, bool mutableCopy) objc-accessors.mm 48行`，我们进入到函数内部
 
 ```objective-c
 //设置属性原子操作
@@ -294,7 +459,16 @@ StripedMap<spinlock_t> PropertyLocks;
 
 由上面得知`atmoic`仅仅是对方法`setter()`和`getter()`安全，对成员变量不保证安全，对于属性的读写一般使用`nonatomic`，性能好，`atomic`读取频率高的时候会导致线程都在排队，浪费CPU时间
 
+`atomic` 在特定情况下并不能保证线程安全，例如以下代码：
 
+```objective-c
+@property(atomic, strong) NSMutableArray *array;
+
+```
+
+> 在多线程对array赋值时可以保证线程安全，如：xx.array = xxx；
+
+但是当多个线程对array进行添加或删除元素操作时，仍然是非线程安全的。 [xx.array addObject: xxx];
 
 ## 几种锁性能对比
 
