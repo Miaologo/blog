@@ -322,7 +322,7 @@ Data 由 Segment 的数据组成，是 Mach-O 占比最多的部分，有代码�
 - __text：机器码，也是实际代码，包含所有功能。
 - __cstring：常量。只读 C 字符串。
 - __const：初始化过的常量。
-- _*objc*：Objective-C 语言 runtime 的支持。
+- __objc：Objective-C 语言 runtime 的支持。
 - __data：初始化过的变量。
 - __bss：未初始化的静态变量。
 - __unwind_info：生成异常处理信息。

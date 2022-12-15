@@ -718,6 +718,8 @@ ARM公司提供的[官方文档](http://infocenter.arm.com/help/index.jsp?topic=
 [iOS调试进阶](https://zhuanlan.zhihu.com/c_142064221)
 [iOS开发同学的arm64汇编入门](https://blog.cnbluebox.com/blog/2017/07/24/arm64-start/)
 
+[iOS汇编快速入门](https://mp.weixin.qq.com/s?__biz=MzA5NzMwODI0MA==&mid=2647763535&idx=1&sn=dc4563fd18cb80cffd000ed903ca3bd2&scene=21#wechat_redirect)
+
 - iOS调试进阶 https://zhuanlan.zhihu.com/c_142064221
 - iOS应用逆向工程 https://book.douban.com/subject/25826902/
 - ios-assembly-tutorial https://www.raywenderlich.com/37181/ios-assembly-tutorial
